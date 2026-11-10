@@ -37,11 +37,11 @@ const LEAN_SQ: bool = true;
 const LEAN_NEGCTL: bool = false;
 /// LEAN_SB: 256-wire register, cross product L*H by controlled adds (no S^2); LEAN_ZL = fold lanes (3 at Q773).
 const LEAN_SB: bool = true;
-const LEAN_ZL: usize = 3;
+const LEAN_ZL: usize = 4;
 /// carry window above a spill addend (the carry past it is dropped: 2^-64 per spill add)
 const SPILL_W: usize = 64;
 /// Multiplier bits consumed into the product.
-const CAPW: usize = 2;
+const CAPW: usize = 0;
 /// Low lanes read when a seed tests a product for zero.
 const ZW: usize = 64;
 const C0M1: [usize; 6] = [4, 6, 7, 8, 9, 32]; // bits of 2^32 + 976
@@ -2825,6 +2825,15 @@ fn build_unfolded() -> Vec<Op> {
 mod gate_fold;
 mod gate_fold2;
 mod hold_idle;
+// shadow: three exact post-passes from the main-lane tree (files unchanged from main), run before the folds.
+#[allow(dead_code)]
+mod affine_simplify;
+#[allow(dead_code)]
+mod cond_pass;
+#[allow(dead_code)]
+mod quadratic_simplify;
+#[allow(dead_code)]
+mod truth_simplify;
 pub fn build() -> Vec<Op> {
     let mut ops = build_unfolded();
     if std::env::var("FOLD_NCT").as_deref() == Ok("0") {
@@ -2837,6 +2846,9 @@ pub fn build() -> Vec<Op> {
         eprintln!("HOLD_IDLE holds={h} (before the folds)");
         ops = o;
     }
+    ops = affine_simplify::simplify(ops);
+    ops = truth_simplify::simplify_products(ops);
+    ops = cond_pass::final_cap_cleanup(ops);
     ops = gate_fold::apply(ops);
     let rounds = std::env::var("FOLD2").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(3);
     ops = gate_fold2::apply(ops, rounds);
