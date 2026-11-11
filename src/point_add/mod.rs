@@ -3039,7 +3039,10 @@ pub fn build() -> Vec<Op> {
     }
     ops = affine_simplify::simplify(ops);
     ops = truth_simplify::simplify_products(ops);
-    ops = cond_pass::final_cap_cleanup(ops);
+    // shadow: the cap cleanup's own three rounds do not reach a fixed point on this stream; three calls do.
+    for _ in 0..3 {
+        ops = cond_pass::final_cap_cleanup(ops);
+    }
     ops = gate_fold::apply(ops);
     let rounds = std::env::var("FOLD2").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(3);
     ops = gate_fold2::apply(ops, rounds);
