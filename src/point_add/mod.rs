@@ -2949,6 +2949,17 @@ fn build_unfolded() -> Vec<Op> {
 mod gate_fold;
 mod gate_fold2;
 mod hold_idle;
+// Three exact post-passes from the main-lane tree (affine_simplify.rs, truth_simplify.rs and cond_pass.rs are already in
+// this tree, unchanged; they were not compiled in before). They run on the finished stream before the folds, as in
+// binharold's 777 row (eae44491). On this stream a second final_cap_cleanup call finds nothing more, so it runs once.
+#[allow(dead_code)]
+mod affine_simplify;
+#[allow(dead_code)]
+mod cond_pass;
+#[allow(dead_code)]
+mod quadratic_simplify;
+#[allow(dead_code)]
+mod truth_simplify;
 pub fn build() -> Vec<Op> {
     let mut ops = build_unfolded();
     if std::env::var("FOLD_NCT").as_deref() == Ok("0") {
@@ -2961,6 +2972,9 @@ pub fn build() -> Vec<Op> {
         eprintln!("HOLD_IDLE holds={h} (before the folds)");
         ops = o;
     }
+    ops = affine_simplify::simplify(ops);
+    ops = truth_simplify::simplify_products(ops);
+    ops = cond_pass::final_cap_cleanup(ops);
     ops = gate_fold::apply(ops);
     let rounds = std::env::var("FOLD2").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(3);
     ops = gate_fold2::apply(ops, rounds);
