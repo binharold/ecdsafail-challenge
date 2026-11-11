@@ -2979,10 +2979,10 @@ pub fn build() -> Vec<Op> {
     let rounds = std::env::var("FOLD2").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(3);
     ops = gate_fold2::apply(ops, rounds);
     if holds && !holds_first {
-        // Spare wires for the hold pass: 4 wires above the construction's 785 are zero and untouched, so the pass can
+        // Spare wires for the hold pass: 5 wires above the construction's 785 are zero and untouched, so the pass can
         // keep hold copies on them. An identity X;X pair on each makes them visible to it; the pairs are removed after.
         const BASE: u64 = 785;
-        const SPARE: u64 = 4;
+        const SPARE: u64 = 5;
         for d in 0..SPARE {
             let x = Op { kind: OperationType::X, q_target: QubitId(BASE + d), ..Op::empty() };
             ops.push(x);
