@@ -1,5 +1,7 @@
 # The secp256k1 Point-Addition Challenge
 
+> **This fork:** my low-qubit Pareto results (774–785 qubits, each below the previous best) are written up in [RESULTS.md](RESULTS.md).
+
 > **Goal.** Build the cheapest reversible quantum circuit that performs one
 > elliptic-curve point addition on **secp256k1**, scored by the product of
 > **Toffoli count × peak qubit width**.
