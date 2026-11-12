@@ -2884,10 +2884,25 @@ fn build_base() -> Vec<Op> {
 mod gate_fold;
 mod gate_fold2;
 mod hold_idle;
+// shadow: three exact post-passes from the main-lane tree (files unchanged from main), run before the folds.
+#[allow(dead_code)]
+mod affine_simplify;
+#[allow(dead_code)]
+mod cond_pass;
+#[allow(dead_code)]
+mod quadratic_simplify;
+#[allow(dead_code)]
+mod truth_simplify;
 mod peephole;
 mod peephole_hook;
 pub fn build() -> Vec<Op> {
     let mut ops = peephole_hook::apply(build_base());
+    ops = affine_simplify::simplify(ops);
+    ops = truth_simplify::simplify_products(ops);
+    // shadow: the cap cleanup's own three rounds do not reach a fixed point on this stream; three calls do.
+    for _ in 0..3 {
+        ops = cond_pass::final_cap_cleanup(ops);
+    }
     ops = gate_fold::apply(ops);
     ops = gate_fold2::apply(ops, 3);
     let (o, h) = hold_idle::apply_reloc(ops);
