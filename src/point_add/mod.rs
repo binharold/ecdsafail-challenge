@@ -5413,7 +5413,7 @@ fn emit_finv(p: &mut P, fc: &FCirc, x: &[u32], pas: &[u32], k: &Kept) {
     }
 }
 
-pub fn build() -> Vec<Op> {
+fn build_unfolded() -> Vec<Op> {
     let fc = f_circuit();
     let mut p = P { ops: Vec::with_capacity(190_000_000), free: vec![], next: 0, bits: 0 };
     let x = p.allocn(256);
@@ -5556,4 +5556,20 @@ pub fn build() -> Vec<Op> {
     }
     eprintln!("point_add: ops {} peak qubits {}", p.ops.len(), p.next);
     p.ops
+}
+
+// Exact post-passes from the low-qubit lane, applied to the finished stream (files byte-identical to binharold's 777 row
+// eae44491, which took them from odinfree's c0bcef05): nasqret's Toffoli-pair fold (gate_fold.rs), three in-place rounds
+// of the same identities (gate_fold2.rs), then relocating idle-wire product holds (hold_idle.rs). The hold pass keeps
+// every wire inside the stream's existing width, so the peak stays 770.
+mod gate_fold;
+mod gate_fold2;
+mod hold_idle;
+pub fn build() -> Vec<Op> {
+    let mut ops = build_unfolded();
+    ops = gate_fold::apply(ops);
+    ops = gate_fold2::apply(ops, 3);
+    let (o, h) = hold_idle::apply_reloc(ops);
+    eprintln!("HOLD_IDLE holds={h}");
+    o
 }
