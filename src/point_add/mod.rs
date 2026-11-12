@@ -5651,7 +5651,7 @@ fn build_unfolded() -> Vec<Op> {
 // Exact post-passes from the low-qubit lane, applied to the finished stream (files byte-identical to binharold's 777 row
 // eae44491, which took them from odinfree's c0bcef05): nasqret's Toffoli-pair fold (gate_fold.rs), three in-place rounds
 // of the same identities (gate_fold2.rs), then relocating idle-wire product holds (hold_idle.rs). The hold pass keeps
-// every wire inside the stream's existing width, so the peak stays 770.
+// every wire inside the stream's existing width, so the peak stays at the construction's width.
 mod gate_fold;
 mod gate_fold2;
 mod hold_idle;
