@@ -5213,13 +5213,39 @@ fn build_unfolded() -> Vec<Op> {
 mod gate_fold;
 mod gate_fold2;
 mod hold_idle;
+// shadow: three exact post-passes from the main-lane tree (files unchanged; already in this archive, undeclared), run
+// before the folds, as in binharold's 773 row 16bbecfb.
+#[allow(dead_code)]
+mod affine_simplify;
+#[allow(dead_code)]
+mod cond_pass;
+#[allow(dead_code)]
+mod quadratic_simplify;
+#[allow(dead_code)]
+mod truth_simplify;
 mod peephole;
 mod peephole_hook;
+fn shadow_ccx(ops: &[Op]) -> usize {
+    ops.iter().filter(|o| o.kind == crate::circuit::OperationType::CCX).count()
+}
 pub fn build() -> Vec<Op> {
     let mut ops = peephole_hook::apply(build_unfolded());
+    eprintln!("SHADOW_CCX after peephole: {} (ops {})", shadow_ccx(&ops), ops.len());
+    ops = affine_simplify::simplify(ops);
+    eprintln!("SHADOW_CCX after affine_simplify: {}", shadow_ccx(&ops));
+    ops = truth_simplify::simplify_products(ops);
+    eprintln!("SHADOW_CCX after truth_simplify: {}", shadow_ccx(&ops));
+    // shadow: the cap cleanup's own rounds do not reach a fixed point on the 773 stream; three calls did there.
+    for i in 0..3 {
+        ops = cond_pass::final_cap_cleanup(ops);
+        eprintln!("SHADOW_CCX after final_cap_cleanup #{}: {}", i + 1, shadow_ccx(&ops));
+    }
     ops = gate_fold::apply(ops);
+    eprintln!("SHADOW_CCX after gate_fold: {}", shadow_ccx(&ops));
     ops = gate_fold2::apply(ops, 3);
+    eprintln!("SHADOW_CCX after gate_fold2: {}", shadow_ccx(&ops));
     let (o, h) = hold_idle::apply_reloc(ops);
     eprintln!("HOLD_IDLE holds={h}");
+    eprintln!("SHADOW_CCX after hold_idle: {} (ops {})", shadow_ccx(&o), o.len());
     o
 }
