@@ -5218,8 +5218,6 @@ mod hold_idle;
 #[allow(dead_code)]
 mod affine_simplify;
 #[allow(dead_code)]
-mod cond_pass;
-#[allow(dead_code)]
 mod quadratic_simplify;
 #[allow(dead_code)]
 mod truth_simplify;
@@ -5235,11 +5233,6 @@ pub fn build() -> Vec<Op> {
     eprintln!("SHADOW_CCX after affine_simplify: {}", shadow_ccx(&ops));
     ops = truth_simplify::simplify_products(ops);
     eprintln!("SHADOW_CCX after truth_simplify: {}", shadow_ccx(&ops));
-    // shadow: the cap cleanup's own rounds do not reach a fixed point on the 773 stream; three calls did there.
-    for i in 0..3 {
-        ops = cond_pass::final_cap_cleanup(ops);
-        eprintln!("SHADOW_CCX after final_cap_cleanup #{}: {}", i + 1, shadow_ccx(&ops));
-    }
     ops = gate_fold::apply(ops);
     eprintln!("SHADOW_CCX after gate_fold: {}", shadow_ccx(&ops));
     ops = gate_fold2::apply(ops, 3);
