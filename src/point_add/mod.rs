@@ -3090,7 +3090,7 @@ pub fn build() -> Vec<Op> {
         // Spare wires for the hold pass: 7 wires above the construction's 785 are zero and untouched, so the pass can
         // keep hold copies on them. An identity X;X pair on each makes them visible to it; the pairs are removed after.
         const BASE: u64 = 785;
-        const SPARE: u64 = 7;
+        const SPARE: u64 = 6;
         for d in 0..SPARE {
             let x = Op { kind: OperationType::X, q_target: QubitId(BASE + d), ..Op::empty() };
             ops.push(x);
