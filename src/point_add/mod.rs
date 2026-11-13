@@ -4895,9 +4895,25 @@ fn build_fd2() -> Vec<Op> {
     ops
 }
 
+// shadow: the exact Toffoli-pair folds and relocating product holds of the low-qubit lane (gate_fold.rs as in this
+// tree, gate_fold2.rs and hold_idle.rs copied unchanged from odinfree's c0bcef05), applied to the finished stream.
+mod gate_fold;
+mod gate_fold2;
+mod hold_idle;
+fn post_folds(ops: Vec<Op>) -> Vec<Op> {
+    let ccx = |o: &Vec<Op>| o.iter().filter(|x| x.kind == OperationType::CCX).count();
+    eprintln!("SHADOW start ccx={}", ccx(&ops));
+    let ops = gate_fold::apply(ops);
+    eprintln!("SHADOW gate_fold ccx={}", ccx(&ops));
+    let ops = gate_fold2::apply(ops, 3);
+    eprintln!("SHADOW gate_fold2 ccx={}", ccx(&ops));
+    let (ops, h) = hold_idle::apply_reloc(ops);
+    eprintln!("SHADOW hold_idle holds={h} ccx={}", ccx(&ops));
+    ops
+}
 pub fn build() -> Vec<Op> {
     if P5SHELL {
-        return build_fd2();
+        return post_folds(build_fd2());
     }
     let fc = f_circuit();
     let mut p = P { ops: Vec::with_capacity(190_000_000), free: vec![], next: 0, bits: 0 };
