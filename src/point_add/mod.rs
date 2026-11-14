@@ -590,7 +590,31 @@ fn frozen_env_restore() {
     std::env::set_var("CONTRACT69_PAIR_COMMIT", "1");
 }
 pub fn build() -> Vec<Op> {
-    build_generated()
+    // Captured before clear_process_env wipes the host environment.
+    // FAST_PLAIN=1: textbook adder, no leapfrog. It builds in seconds on this
+    // machine but the current head flags fail the 9024-shot check.
+    // FAST_EMIT=1: frozen leapfrog emitter only, no simplify chain and no
+    // raw-stream dump. The full chain is what passes; emit-only does not.
+    let fast_plain = std::env::var("FAST_PLAIN").ok().as_deref() == Some("1");
+    let fast_emit = std::env::var("FAST_EMIT").ok().as_deref() == Some("1");
+    if fast_plain {
+        return build_plain();
+    }
+    build_generated(fast_emit)
+}
+
+/// Textbook point addition: HEO and leapfrog off, no post-passes.
+fn build_plain() -> Vec<Op> {
+    for name in ["LEAPFROG", "HEO_WALK", "HEO_RESEARCH", "HEO_EMIT_ONLY"] {
+        std::env::remove_var(name);
+    }
+    let mut ops = build_point_add();
+    let nonce: u64 = required_env("TAIL_NONCE");
+    let mut x = Op::empty();
+    x.kind = OperationType::X;
+    x.q_target = QubitId(0);
+    ops.extend(std::iter::repeat_n(x, 96));
+    apply_tail_nonce(ops, nonce)
 }
 
 /// laneW: the final policies with no stream binding. Exact and proof-based only; the stream-bound narrowing tables are out.
@@ -608,7 +632,7 @@ fn lane_generic_policy(ops: Vec<Op>) -> Vec<Op> {
 }
 
 /// Original structural generator, retained for audit and regeneration.
-pub fn build_generated() -> Vec<Op> {
+pub fn build_generated(fast_emit: bool) -> Vec<Op> {
     // W124 (Codex) width composition, ported onto 6602a4e8: the effective selection pinned in source.
     // trace=true reproduces W124's logs only (stderr); it does not change gates.
     let w113_trace = true;
@@ -654,6 +678,14 @@ pub fn build_generated() -> Vec<Op> {
     for line in recipe.lines(){if let Some((k,v))=line.split_once('='){std::env::set_var(k,v);}}
     eprintln!("BIND81_RECIPE {}",recipe.replace('\n',";"));
     let mut ops = build_point_add();
+    if fast_emit {
+        let nonce: u64 = required_env("TAIL_NONCE");
+        let mut x = Op::empty();
+        x.kind = OperationType::X;
+        x.q_target = QubitId(0);
+        ops.extend(std::iter::repeat_n(x, 96));
+        return apply_tail_nonce(ops, nonce);
+    }
     {use std::io::Write;let mut f=std::io::BufWriter::new(std::fs::File::create("bind81-builder.raw").unwrap());
      for o in &ops {for v in [o.kind as u64,o.q_control2.0,o.q_control1.0,o.q_target.0,o.c_target.0,o.c_condition.0,o.r_target.0]{f.write_all(&v.to_le_bytes()).unwrap();}}f.flush().unwrap();}
     if std::env::var("BIND81_RAW").ok().as_deref()==Some("1"){
